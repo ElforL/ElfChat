@@ -44,16 +44,7 @@ class MessageBubble extends StatelessWidget {
                 if (message.photoURL != null && message.photoURL.isNotEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 5),
-                    child: Image.network(
-                      message.photoURL,
-                      errorBuilder: (context, error, stackTrace) {
-                        return ImageErrorBox(isSent: isSent);
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return ImageLoadingBox(isSent: isSent, loadingProgress: loadingProgress);
-                      },
-                    ),
+                    child: ImageViewer(message: message, isSent: isSent),
                   ),
                 // Message text
                 if (message.message.isNotEmpty || message.photoURL == null || message.photoURL.isEmpty)
@@ -66,6 +57,31 @@ class MessageBubble extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ImageViewer extends StatelessWidget {
+  const ImageViewer({
+    Key key,
+    @required this.message,
+    @required this.isSent,
+  }) : super(key: key);
+
+  final ElfMessage message;
+  final bool isSent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      message.photoURL,
+      errorBuilder: (context, error, stackTrace) {
+        return ImageErrorBox(isSent: isSent);
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return ImageLoadingBox(isSent: isSent, loadingProgress: loadingProgress);
+      },
     );
   }
 }
