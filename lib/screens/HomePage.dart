@@ -1,9 +1,8 @@
-import 'package:elfchat/models/Chat.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:elfchat/screens/UserPage.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
 import 'package:elfchat/widgets/ChatTile.dart';
-import 'package:elfchat/widgets/LoadingWidget.dart';
 import 'package:flutter/material.dart';
 
 /// the chats list page
@@ -18,7 +17,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<ElfChat> chatsList = [];
+  List<Map<String, dynamic>> chatsList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -48,20 +47,20 @@ class _HomePageState extends State<HomePage> {
           Navigator.pushNamed(context, '/search', arguments: chatsList);
         },
       ),
-      body: FutureBuilder(
-        future: widget._db.getUserChatsList(widget._auth.user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            chatsList = snapshot.data;
-            return ListView.builder(
-              itemCount: chatsList.length,
-              itemBuilder: (BuildContext context, int index) {
-                return ChatTile(chatsList[index], widget._auth, widget._db);
-              },
-            );
+      body: StreamBuilder(
+        stream: widget._db.getUserChatsSnippets(widget._auth.user.uid),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            chatsList = [
+              for (var doc in snapshot.data.docs) doc.data()..addAll({'chatID': doc.id})
+            ];
           }
-
-          return LoadingWidget(text: 'Loading chats');
+          return ListView.builder(
+            itemCount: chatsList.length,
+            itemBuilder: (BuildContext context, int index) {
+              return ChatTile(chatsList[index], widget._auth, widget._db);
+            },
+          );
         },
       ),
     );

@@ -1,4 +1,3 @@
-import 'package:elfchat/models/Chat.dart';
 import 'package:elfchat/screens/UserPage.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
@@ -26,7 +25,7 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  _submuit(String value, List<ElfChat> chatList) async {
+  _submuit(String value, List<Map<String, dynamic>> chatList) async {
     value = value.trim();
     if (value.isEmpty || value == widget.auth.user.email) return;
 

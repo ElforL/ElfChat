@@ -28,7 +28,7 @@ class _UserPageState extends State<UserPage> {
     Navigator.popUntil(context, ModalRoute.withName('/'));
   }
 
-  _chatFunciton(List<ElfChat> chatList) async {
+  _chatFunciton(List<Map<String, dynamic>> chatList) async {
     var chat = await widget.db.getChatWithUser(chatList, user.userID);
     Navigator.pushReplacementNamed(
       context,
@@ -200,7 +200,7 @@ class SignOutButton extends StatelessWidget {
 }
 
 class UserPageArguments {
-  final List<ElfChat> chatList;
+  final List<Map<String, dynamic>> chatList;
   final ElfUser elfUser;
   final User user;
   final UserDetailsForm form;

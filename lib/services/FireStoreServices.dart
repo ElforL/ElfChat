@@ -17,24 +17,12 @@ class FireStoreServices {
 
   // Chat methods
 
-  Future<List<ElfChat>> getUserChatsList(String userID) async {
-    var output = <ElfChat>[];
+  Stream<QuerySnapshot> getUserChatsSnippets(String userID) {
     try {
-      var list =
-          (await _chatsRef.where('users', arrayContains: userID).orderBy('lastModified', descending: true).get()).docs;
-      for (var docSnapshop in list) {
-        var contactUID;
-        var users = docSnapshop.data()['users'];
-        for (var uid in users) {
-          if (uid != userID) contactUID = uid;
-        }
-
-        var user = await retriveUser(contactUID);
-        if (user != null) output.add(ElfChat(user, docSnapshop.id));
-      }
-    } catch (e) {}
-
-    return output;
+      return _usersRef.doc(userID).collection('chatsSnippets').orderBy('lastModified', descending: true).snapshots();
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<DocumentReference> sendMessage(String chatID, ElfUser contact, ElfMessage message) async {
@@ -60,10 +48,19 @@ class FireStoreServices {
       'lastModified': FieldValue.serverTimestamp(),
       'lastMsg': messageDoc,
       'chatRefrence': _chatsRef.doc(chatID),
-      'user': contact.userID,
     };
-    _usersRef.doc(contact.userID).collection('chatsSnippets').doc(chatID).set(msgSnippet);
-    _usersRef.doc(userID).collection('chatsSnippets').doc(chatID).set(msgSnippet);
+    _usersRef.doc(contact.userID).collection('chatsSnippets').doc(chatID).set(msgSnippet
+      ..addAll(
+        {
+          'user': userID,
+        },
+      ));
+    _usersRef.doc(userID).collection('chatsSnippets').doc(chatID).set(msgSnippet
+      ..addAll(
+        {
+          'user': contact.userID,
+        },
+      ));
   }
 
   Stream<QuerySnapshot> getChatMsgsStream(String chatID) {
@@ -76,9 +73,9 @@ class FireStoreServices {
     return chatRef.collection('messages').orderBy('createdAt', descending: true).limit(1).snapshots();
   }
 
-  Future<ElfChat> getChatWithUser(List<ElfChat> userChats, String contactID) async {
+  Future<Map<String, dynamic>> getChatWithUser(List<Map<String, dynamic>> userChats, String contactID) async {
     for (var chat in userChats) {
-      if (chat.user.userID == contactID) {
+      if (chat['user'] == contactID) {
         return chat;
       }
     }
