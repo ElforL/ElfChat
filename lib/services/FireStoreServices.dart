@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:elfchat/models/Chat.dart';
 import 'package:elfchat/models/Message.dart';
 import 'package:elfchat/models/User.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FireStoreServices {
   FirebaseFirestore _firestore;
@@ -15,8 +14,10 @@ class FireStoreServices {
     _usersRef = _firestore.collection('users');
   }
 
-  // Chat methods
+  // ////////////////////////////////////// Chat methods //////////////////////////////////////
 
+  /// takes a userID and return the chatsnipperts of that user ordered by date.
+  /// as a Stream.
   Stream<QuerySnapshot> getUserChatsSnippets(String userID) {
     try {
       return _usersRef.doc(userID).collection('chatsSnippets').orderBy('lastModified', descending: true).snapshots();
@@ -25,54 +26,64 @@ class FireStoreServices {
     }
   }
 
-  Future<DocumentReference> sendMessage(String chatID, ElfUser contact, ElfMessage message) async {
+  /// Sends a [message] in a chat with given [chatID].
+  ///
+  /// [reciver] is the user that is getting the message.
+  Future<DocumentReference> sendMessage(String chatID, ElfUser reciver, ElfMessage message) async {
     var messagesRef = _chatsRef.doc(chatID).collection('messages');
 
-    // create message
+    // create message.
     var msgJson = message.toJson();
     msgJson['createdAt'] = FieldValue.serverTimestamp();
 
-    // send it
+    // send it.
     var messageDoc = await messagesRef.add(msgJson);
 
-    // update lastModified
+    // update lastModified.
     _chatsRef.doc(chatID).update({'lastModified': FieldValue.serverTimestamp()});
 
-    updateChatSnippet(contact, message.userID, chatID, messageDoc);
+    // that's why we need [contact], to update thier snippet.
+    updateChatSnippet(reciver.userID, message.userID, chatID, messageDoc);
 
     return messageDoc;
   }
 
-  void updateChatSnippet(ElfUser contact, String userID, String chatID, DocumentReference messageDoc) {
+  /// Updates the chat snippet of both the reciver and sender of a message.
+  // reciver is idenified by [contact] and the sender by [userID].
+  void updateChatSnippet(String reciverID, String senderID, String chatID, DocumentReference messageDoc) {
+    // Create the snippet
     var msgSnippet = {
       'lastModified': FieldValue.serverTimestamp(),
       'lastMsg': messageDoc,
       'chatRefrence': _chatsRef.doc(chatID),
     };
-    _usersRef.doc(contact.userID).collection('chatsSnippets').doc(chatID).set(msgSnippet
+
+    // update the reciver's
+    _usersRef.doc(reciverID).collection('chatsSnippets').doc(chatID).set(msgSnippet
       ..addAll(
         {
-          'user': userID,
+          'user': senderID,
         },
       ));
-    _usersRef.doc(userID).collection('chatsSnippets').doc(chatID).set(msgSnippet
+
+    // update the sender's
+    _usersRef.doc(senderID).collection('chatsSnippets').doc(chatID).set(msgSnippet
       ..addAll(
         {
-          'user': contact.userID,
+          'user': reciverID,
         },
       ));
   }
 
+  /// returns a Stream of messages in a chat with a given [chatID].
   Stream<QuerySnapshot> getChatMsgsStream(String chatID) {
     var chatRef = _chatsRef.doc(chatID);
     return chatRef.collection('messages').orderBy('createdAt', descending: true).snapshots();
   }
 
-  Stream getLastMessage(String chatId) {
-    var chatRef = _chatsRef.doc(chatId);
-    return chatRef.collection('messages').orderBy('createdAt', descending: true).limit(1).snapshots();
-  }
-
+  /// returns a chat snippet with a user with a given [contactID] from the list [userChats].
+  ///
+  /// returns null if there's none found (no previous chats).
   Future<Map<String, dynamic>> getChatWithUser(List<Map<String, dynamic>> userChats, String contactID) async {
     for (var chat in userChats) {
       if (chat['user'] == contactID) {
@@ -82,27 +93,33 @@ class FireStoreServices {
     return null;
   }
 
+  /// Creates a new chat document and returns the refrence.
+  ///
+  /// [userID] is the uid of the current (signed-in) user.
   Future<DocumentReference> createChat(String userID, ElfChat chat) async {
     var newDoc = await _chatsRef.add({
       'users': [userID, chat.user.userID],
       'lastModified': FieldValue.serverTimestamp(),
     });
 
-    await newDoc.collection('messages').get();
     return newDoc;
   }
 
-  // User methods
+  // ////////////////////////////////////// User methods //////////////////////////////////////
+
+  /// ensures that [user] is in the database (i.e., adds it if it's not).
   ensureUser(ElfUser user) async {
     if (!(await doesUserExistInDB(user.userID))) {
       addUser(user);
     }
   }
 
+  /// Returns true if the user is in the Database
   Future<bool> doesUserExistInDB(userId) async {
-    return (await _usersRef.doc(userId).get()).data() != null;
+    return (await _usersRef.doc(userId).get()).exists;
   }
 
+  /// Creates a Document for [user] in the Database.
   addUser(ElfUser user) async {
     var userJson = user.toJson();
     var userID = userJson['userID'];
@@ -114,20 +131,9 @@ class FireStoreServices {
     }
   }
 
-  updateUserInfo(User user) async {
-    var userJson = <String, dynamic>{
-      'email': user.email,
-      'displayName': user.displayName,
-      'photoURL': user.photoURL,
-    };
-
-    try {
-      await _usersRef.doc(user.uid).set(userJson);
-    } on Exception catch (e) {
-      print(e.toString());
-    }
-  }
-
+  /// Returns `ElfUser` with given [userID] from the Database.
+  ///
+  /// Returns `null` if none were found, or if there was an error.
   Future<ElfUser> retriveUser(String userID) async {
     try {
       var user = await _usersRef.doc(userID).get();
@@ -140,6 +146,9 @@ class FireStoreServices {
     }
   }
 
+  /// Returns an `ElfUser` with given [email] from the database.
+  ///
+  /// Returns `null` if none were found.
   Future<ElfUser> searchForUser(String email) async {
     var result = await _usersRef.where('email', isEqualTo: email).get();
     if (result.docs.isEmpty)
