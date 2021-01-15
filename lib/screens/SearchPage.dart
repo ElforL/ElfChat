@@ -1,3 +1,4 @@
+import 'package:elfchat/models/Chat.dart';
 import 'package:elfchat/screens/UserPage.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
@@ -25,7 +26,7 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  _submuit(String value) async {
+  _submuit(String value, List<ElfChat> chatList) async {
     value = value.trim();
     if (value.isEmpty || value == widget.auth.user.email) return;
 
@@ -40,7 +41,7 @@ class _SearchPageState extends State<SearchPage> {
       Navigator.pushReplacementNamed(
         context,
         '/user',
-        arguments: UserPageArguments(elfUser: user, form: UserDetailsForm.Search),
+        arguments: UserPageArguments(chatList: chatList, elfUser: user, form: UserDetailsForm.Search),
       );
     }
   }
@@ -50,7 +51,7 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
-          onSubmitted: _submuit,
+          onSubmitted: (value) => _submuit(value, ModalRoute.of(context).settings.arguments),
           autofocus: true,
           controller: _searchController,
           cursorColor: Colors.white,

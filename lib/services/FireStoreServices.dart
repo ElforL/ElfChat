@@ -37,18 +37,33 @@ class FireStoreServices {
     return output;
   }
 
-  Stream<QuerySnapshot> getUserChatsStream(String userID) {
-    var stream = _chatsRef.where('users', arrayContains: userID).snapshots();
-    return stream;
-  }
-
-  Future<DocumentReference> sendMessage(String chatID, ElfMessage message) async {
+  Future<DocumentReference> sendMessage(String chatID, ElfUser contact, ElfMessage message) async {
     var messagesRef = _chatsRef.doc(chatID).collection('messages');
-    _chatsRef.doc(chatID).update({'lastModified': Timestamp.now()});
 
+    // create message
     var msgJson = message.toJson();
     msgJson['createdAt'] = FieldValue.serverTimestamp();
-    return await messagesRef.add(msgJson);
+
+    // send it
+    var messageDoc = await messagesRef.add(msgJson);
+
+    // update lastModified
+    _chatsRef.doc(chatID).update({'lastModified': FieldValue.serverTimestamp()});
+
+    updateChatSnippet(contact, message.userID, chatID, messageDoc);
+
+    return messageDoc;
+  }
+
+  void updateChatSnippet(ElfUser contact, String userID, String chatID, DocumentReference messageDoc) {
+    var msgSnippet = {
+      'lastModified': FieldValue.serverTimestamp(),
+      'lastMsg': messageDoc,
+      'chatRefrence': _chatsRef.doc(chatID),
+      'user': contact.userID,
+    };
+    _usersRef.doc(contact.userID).collection('chatsSnippets').doc(chatID).set(msgSnippet);
+    _usersRef.doc(userID).collection('chatsSnippets').doc(chatID).set(msgSnippet);
   }
 
   Stream<QuerySnapshot> getChatMsgsStream(String chatID) {
@@ -61,8 +76,7 @@ class FireStoreServices {
     return chatRef.collection('messages').orderBy('createdAt', descending: true).limit(1).snapshots();
   }
 
-  Future<ElfChat> getChatWithUser(String userID, String contactID) async {
-    var userChats = await getUserChatsList(userID);
+  Future<ElfChat> getChatWithUser(List<ElfChat> userChats, String contactID) async {
     for (var chat in userChats) {
       if (chat.user.userID == contactID) {
         return chat;

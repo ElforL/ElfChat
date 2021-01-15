@@ -18,16 +18,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<ElfChat> chatsList;
-
-  @override
-  void initState() {
-    chatsList = [];
-    widget._db.getUserChatsStream(widget._auth.user.uid).listen((event) {
-      setState(() {});
-    });
-    super.initState();
-  }
+  List<ElfChat> chatsList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +33,7 @@ class _HomePageState extends State<HomePage> {
                 context,
                 '/user',
                 arguments: UserPageArguments(
+                  chatList: chatsList,
                   user: widget._auth.user,
                   form: UserDetailsForm.LoggedIn,
                 ),
@@ -53,7 +45,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.chat),
         onPressed: () {
-          Navigator.pushNamed(context, '/search');
+          Navigator.pushNamed(context, '/search', arguments: chatsList);
         },
       ),
       body: FutureBuilder(

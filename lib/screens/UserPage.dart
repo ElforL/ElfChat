@@ -28,12 +28,12 @@ class _UserPageState extends State<UserPage> {
     Navigator.popUntil(context, ModalRoute.withName('/'));
   }
 
-  _chatFunciton() async {
-    var chat = await widget.db.getChatWithUser(widget.auth.user.uid, user.userID);
+  _chatFunciton(List<ElfChat> chatList) async {
+    var chat = await widget.db.getChatWithUser(chatList, user.userID);
     Navigator.pushReplacementNamed(
       context,
       '/chat',
-      arguments: ElfChat(user, null),
+      arguments: chat ?? ElfChat(user, null),
     );
   }
 
@@ -105,7 +105,7 @@ class _UserPageState extends State<UserPage> {
             if (!isForLoggedIn)
               BottomButtons(
                 form,
-                chatFunction: _chatFunciton,
+                chatFunction: () => _chatFunciton(args.chatList),
               ),
           ],
         ),
@@ -200,11 +200,12 @@ class SignOutButton extends StatelessWidget {
 }
 
 class UserPageArguments {
+  final List<ElfChat> chatList;
   final ElfUser elfUser;
   final User user;
   final UserDetailsForm form;
 
-  UserPageArguments({this.elfUser, this.user, this.form});
+  UserPageArguments({this.chatList, this.elfUser, this.user, this.form});
 }
 
 enum UserDetailsForm {

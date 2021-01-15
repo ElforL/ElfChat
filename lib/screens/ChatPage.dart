@@ -43,7 +43,7 @@ class _ChatPageState extends State<ChatPage> {
         photoURL: photoURL,
       );
       // send it
-      widget._db.sendMessage(chatID, message);
+      widget._db.sendMessage(chatID, _chat.user, message);
       if (_chat.chatID == null) {
         setState(() {
           _chat.chatID = chatID;
@@ -103,8 +103,10 @@ class _ChatPageState extends State<ChatPage> {
               stream: widget._db.getChatMsgsStream(_chat.chatID),
               builder: (context, snapshot) {
                 // update messages list
-                if (snapshot.connectionState == ConnectionState.active)
-                  _messages = [for (var doc in snapshot.data.docs) ElfMessage.fromJson(doc.data())];
+                if (snapshot.connectionState == ConnectionState.active) {
+                  if (snapshot.data != null)
+                    _messages = [for (var doc in snapshot.data?.docs) ElfMessage.fromJson(doc.data())];
+                }
 
                 // build it
                 return ListView.builder(
