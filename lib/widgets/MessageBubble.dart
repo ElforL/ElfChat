@@ -44,7 +44,7 @@ class MessageBubble extends StatelessWidget {
                 if (message.photoURL != null && message.photoURL.isNotEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 5),
-                    child: ImageViewer(message: message, isSent: isSent),
+                    child: ImageViewer(key: ValueKey(message.photoURL), message: message, isSent: isSent),
                   ),
                 // Message text
                 if (message.message.isNotEmpty || message.photoURL == null || message.photoURL.isEmpty)
