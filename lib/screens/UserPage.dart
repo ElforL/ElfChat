@@ -1,4 +1,5 @@
 import 'package:elfchat/models/Chat.dart';
+import 'package:elfchat/models/ChatSnippet.dart';
 import 'package:elfchat/models/User.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
@@ -28,7 +29,7 @@ class _UserPageState extends State<UserPage> {
     Navigator.popUntil(context, ModalRoute.withName('/'));
   }
 
-  _chatFunciton(List<Map<String, dynamic>> chatList) async {
+  _chatFunciton(List<ElfChatSnippet> chatList) async {
     var chat = await widget.db.getChatWithUser(chatList, user.userID);
     Navigator.pushReplacementNamed(
       context,
@@ -200,7 +201,7 @@ class SignOutButton extends StatelessWidget {
 }
 
 class UserPageArguments {
-  final List<Map<String, dynamic>> chatList;
+  final List<ElfChatSnippet> chatList;
   final ElfUser elfUser;
   final User user;
   final UserDetailsForm form;

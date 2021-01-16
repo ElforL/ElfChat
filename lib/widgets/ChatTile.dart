@@ -1,18 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:elfchat/models/Chat.dart';
+import 'package:elfchat/models/ChatSnippet.dart';
 import 'package:elfchat/models/User.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
 import 'package:flutter/material.dart';
 
 class ChatTile extends StatefulWidget {
-  final Map<String, dynamic> snippet;
   final AuthServices _auth;
-  final FireStoreServices db;
+  final FireStoreServices _db;
 
-  ElfChat _chat;
+  ElfChatSnippet snippet;
+  ElfUser user;
+  ElfChat chat;
 
-  ChatTile(this.snippet, this._auth, this.db);
+  ChatTile(this.snippet, this._auth, this._db, {this.user});
+
+  update(ElfChatSnippet snippet) {
+    this.snippet = snippet;
+  }
 
   @override
   _ChatTileState createState() => _ChatTileState();
@@ -24,54 +30,48 @@ class _ChatTileState extends State<ChatTile> {
     return Column(
       children: [
         FutureBuilder(
-            future: widget.db.retriveUser(widget.snippet['user']),
+            future: widget.user == null
+                ? widget._db.retriveUser(widget.snippet.userID)
+                : Future<ElfUser>.value(widget.user),
             builder: (context, AsyncSnapshot<ElfUser> snapshot) {
-              var isUserDone = snapshot.connectionState == ConnectionState.done;
+              if (snapshot.connectionState == ConnectionState.done && widget.user == null) {
+                widget.user = snapshot.data;
+              }
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: isUserDone
+                  backgroundImage: widget.user != null
                       ? NetworkImage(
-                          snapshot.data.photoURL,
+                          widget.user.photoURL,
                         )
                       : null,
-                  child: isUserDone ? null : CircularProgressIndicator(),
+                  child: widget.user != null ? null : CircularProgressIndicator(),
                 ),
-                title: isUserDone
+                title: widget.user != null
                     ? Text(
-                        snapshot.data.displayName,
+                        widget.user.displayName,
                         style: TextStyle(fontWeight: FontWeight.bold),
                       )
                     : LinearProgressIndicator(),
-                subtitle: FutureBuilder(
-                  future: (widget.snippet['lastMsg'] as DocumentReference).get(),
-                  builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-                    var isMsgDone = snapshot.connectionState == ConnectionState.done;
-                    var hasPhoto = isMsgDone ? snapshot.data.data()['attachmentURL'] != null : false;
-                    var msgText = isMsgDone ? snapshot.data.data()['message'] : '';
-
-                    return Row(
-                      children: [
-                        if (hasPhoto)
-                          Icon(
-                            Icons.image,
-                            size: 17,
-                            color: Colors.grey[700],
-                          ),
-                        Text(
-                          msgText,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          maxLines: 1,
-                        ),
-                      ],
-                    );
-                  },
+                subtitle: Row(
+                  children: [
+                    if (widget.snippet.hasPhoto)
+                      Icon(
+                        Icons.image,
+                        size: 17,
+                        color: Colors.grey[700],
+                      ),
+                    Text(
+                      widget.snippet.message,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      maxLines: 1,
+                    ),
+                  ],
                 ),
                 onTap: () async {
-                  if (isUserDone) {
-                    print('chatID = ${widget.snippet}');
-                    widget._chat = ElfChat(snapshot.data, widget.snippet['chatID']);
-                    await Navigator.pushNamed(context, '/chat', arguments: widget._chat);
+                  if (widget.user != null) {
+                    widget.chat = ElfChat(snapshot.data, widget.snippet.chatID);
+                    await Navigator.pushNamed(context, '/chat', arguments: widget.chat);
                   }
                 },
               );

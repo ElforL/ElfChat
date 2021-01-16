@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:elfchat/models/ChatSnippet.dart';
+import 'package:elfchat/screens/SearchPage.dart';
 import 'package:elfchat/screens/UserPage.dart';
 import 'package:elfchat/services/FireStoreServices.dart';
 import 'package:elfchat/services/auth.dart';
@@ -17,7 +19,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> chatsList = [];
+  List<ElfChatSnippet> chatsList = [];
+  List<ChatTile> tiles = [];
 
   @override
   Widget build(BuildContext context) {
@@ -48,17 +51,53 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       body: StreamBuilder(
-        stream: widget._db.getUserChatsSnippets(widget._auth.user.uid),
+        stream: widget._db.getChatsSnippetsStream(widget._auth.user.uid),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.active) {
-            chatsList = [
-              for (var doc in snapshot.data.docs) doc.data()..addAll({'chatID': doc.id})
-            ];
+            for (var docChange in snapshot.data.docChanges) {
+              // ADD.
+              if (docChange.type == DocumentChangeType.added) {
+                // if a doc is added, delete any previous copies of it.
+                chatsList.removeWhere((element) => element.chatID == docChange.doc.id);
+                tiles.removeWhere((element) => element.snippet.chatID == docChange.doc.id);
+                // then add it to the list/
+                var newSnippet = ElfChatSnippet.fromJson(docChange.doc.data(), chatID: docChange.doc.id);
+                chatsList.add(newSnippet);
+                tiles.add(ChatTile(newSnippet, widget._auth, widget._db));
+
+                // MODIFY.
+              } else if (docChange.type == DocumentChangeType.modified) {
+                // fetch
+                var snippet = chatsList.where((element) => element.chatID == docChange.doc.id).first;
+                // update
+                snippet.updateFromJson(docChange.doc.data(), chatID: docChange.doc.id);
+
+                var tile = tiles.where((element) => element.snippet.chatID == docChange.doc.id).first;
+                var tileUser = tile.user;
+
+                tiles.remove(tile);
+                tiles.add(ChatTile(snippet, widget._auth, widget._db, user: tileUser));
+
+                // REMOVE.
+              } else if (docChange.type == DocumentChangeType.removed) {
+                chatsList.removeWhere((element) => element.chatID == docChange.doc.id);
+                tiles.removeWhere((element) => element.snippet.chatID == docChange.doc.id);
+              }
+
+              tiles.sort((a, b) {
+                try {
+                  return b.snippet.lastModified.compareTo(a.snippet.lastModified);
+                } catch (e) {
+                  // this is to prevent 'seconds was called on a null'.
+                  // smh.
+                }
+              });
+            }
           }
           return ListView.builder(
-            itemCount: chatsList.length,
-            itemBuilder: (BuildContext context, int index) {
-              return ChatTile(chatsList[index], widget._auth, widget._db);
+            itemCount: tiles.length,
+            itemBuilder: (context, index) {
+              return tiles[index];
             },
           );
         },

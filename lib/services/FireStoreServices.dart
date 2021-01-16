@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:elfchat/models/Chat.dart';
+import 'package:elfchat/models/ChatSnippet.dart';
 import 'package:elfchat/models/Message.dart';
 import 'package:elfchat/models/User.dart';
 
@@ -18,7 +19,7 @@ class FireStoreServices {
 
   /// takes a userID and return the chatsnipperts of that user ordered by date.
   /// as a Stream.
-  Stream<QuerySnapshot> getUserChatsSnippets(String userID) {
+  Stream<QuerySnapshot> getChatsSnippetsStream(String userID) {
     try {
       return _usersRef.doc(userID).collection('chatsSnippets').orderBy('lastModified', descending: true).snapshots();
     } catch (e) {
@@ -43,18 +44,18 @@ class FireStoreServices {
     _chatsRef.doc(chatID).update({'lastModified': FieldValue.serverTimestamp()});
 
     // that's why we need [contact], to update thier snippet.
-    updateChatSnippet(reciver.userID, message.userID, chatID, messageDoc);
+    updateChatSnippet(reciver.userID, message.userID, chatID, message);
 
     return messageDoc;
   }
 
   /// Updates the chat snippet of both the reciver and sender of a message.
   // reciver is idenified by [contact] and the sender by [userID].
-  void updateChatSnippet(String reciverID, String senderID, String chatID, DocumentReference messageDoc) {
+  void updateChatSnippet(String reciverID, String senderID, String chatID, ElfMessage message) {
     // Create the snippet
     var msgSnippet = {
       'lastModified': FieldValue.serverTimestamp(),
-      'lastMsg': messageDoc,
+      'lastMsg': {'message': message.message, 'hasPhoto': message.photoURL != null},
       'chatRefrence': _chatsRef.doc(chatID),
     };
 
@@ -84,9 +85,9 @@ class FireStoreServices {
   /// returns a chat snippet with a user with a given [contactID] from the list [userChats].
   ///
   /// returns null if there's none found (no previous chats).
-  Future<Map<String, dynamic>> getChatWithUser(List<Map<String, dynamic>> userChats, String contactID) async {
+  Future<ElfChatSnippet> getChatWithUser(List<ElfChatSnippet> userChats, String contactID) async {
     for (var chat in userChats) {
-      if (chat['user'] == contactID) {
+      if (chat.userID == contactID) {
         return chat;
       }
     }
