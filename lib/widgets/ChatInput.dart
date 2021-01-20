@@ -16,7 +16,7 @@ class _InputState extends State<Input> {
   final TextEditingController _messageFieldController = TextEditingController();
   String photoURL;
 
-  final _animationDuration = Duration(milliseconds: 200);
+  final _animationDuration = Duration(milliseconds: 350);
 
   showUrlDialog(BuildContext context) async {
     var urlTfController = TextEditingController(text: photoURL);
@@ -84,7 +84,8 @@ class _InputState extends State<Input> {
               ),
               // The textfield
               AnimatedContainer(
-                duration: photoURL == null ? _animationDuration * 3 : Duration.zero,
+                duration: photoURL == null ? _animationDuration * 1.5 : Duration.zero,
+                curve: Curves.easeInQuint,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(
