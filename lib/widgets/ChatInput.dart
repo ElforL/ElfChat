@@ -1,5 +1,8 @@
-import 'package:elfchat/widgets/ImagePreview.dart';
+import 'dart:io';
+
+import 'package:elfchat/screens/ImagePreviewScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class Input extends StatefulWidget {
   final Function sendFunction;
@@ -14,53 +17,28 @@ class Input extends StatefulWidget {
 
 class _InputState extends State<Input> {
   final TextEditingController _messageFieldController = TextEditingController();
-  String photoURL;
 
-  final _animationDuration = Duration(milliseconds: 350);
+  _pickImage(ImageSource source) async {
+    var imagePicker = ImagePicker();
+    var selected = await imagePicker.getImage(source: source);
 
-  showUrlDialog(BuildContext context) async {
-    var urlTfController = TextEditingController(text: photoURL);
-    // create the buttons
-    var cancelBtn = FlatButton(
-      child: Text("CANCEL"),
-      onPressed: () {
-        Navigator.pop(context);
-      },
-    );
-    var okBtn = FlatButton(
-      child: Text("OK"),
-      onPressed: () {
-        var url = urlTfController.text.trim();
-        photoURL = url.isEmpty ? null : url;
-        Navigator.pop(context);
-      },
-    );
-    var alert = AlertDialog(
-      title: Text("Image Address"),
-      content: TextField(
-        controller: urlTfController,
-        maxLines: 1,
-        decoration: InputDecoration(
-          hintText: 'Enter image address',
-          suffixIcon: IconButton(
-            icon: Icon(Icons.clear),
-            onPressed: () => urlTfController.clear(),
+    if (selected != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ImagePreviewScreen(
+            imageFile: File(selected.path),
+            sendFunction: widget.sendFunction,
           ),
         ),
-      ),
-      actions: [
-        cancelBtn,
-        okBtn,
-      ],
-    );
-    // show the dialog
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
-    );
-    setState(() {});
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageFieldController.dispose();
+    super.dispose();
   }
 
   @override
@@ -68,67 +46,42 @@ class _InputState extends State<Input> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        // Input
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Image preview
-              ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                child: AnimatedContainer(
-                  color: Colors.white,
-                  duration: _animationDuration,
-                  height: photoURL != null ? 200 : 0,
-                  child: photoURL != null ? ImagePreview(key: ValueKey(photoURL), photoURL: photoURL) : null,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                // Pic picker
+                IconButton(
+                  icon: Icon(
+                    Icons.photo_library,
+                    color: Colors.black,
+                  ),
+                  onPressed: () async {
+                    await _pickImage(ImageSource.gallery);
+                  },
                 ),
-              ),
-              // The textfield
-              AnimatedContainer(
-                duration: photoURL == null ? _animationDuration * 1.5 : Duration.zero,
-                curve: Curves.easeInQuint,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(20),
-                    top: photoURL == null ? Radius.circular(20) : Radius.zero,
+                // Message TextField
+                Expanded(
+                  child: TextField(
+                    controller: _messageFieldController,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Type a message',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[350],
+                      ),
+                    ),
                   ),
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        // Pic picker
-                        IconButton(
-                          icon: Icon(
-                            photoURL == null ? Icons.image_search : Icons.image_outlined,
-                            color: Colors.black,
-                          ),
-                          onPressed: () async {
-                            await showUrlDialog(context);
-                            setState(() {});
-                          },
-                        ),
-                        // Message TextField
-                        Expanded(
-                          child: TextField(
-                            controller: _messageFieldController,
-                            minLines: 1,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Type a message',
-                              hintStyle: TextStyle(
-                                color: Colors.grey[350],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         // Send button
@@ -139,22 +92,16 @@ class _InputState extends State<Input> {
             borderRadius: BorderRadius.circular(360),
           ),
           child: IconButton(
-              icon: Icon(Icons.send),
-              color: Colors.white,
-              onPressed: () {
-                setState(() {
-                  widget.sendFunction(_messageFieldController, photoURL);
-                  photoURL = null;
-                });
-              }),
+            icon: Icon(Icons.send),
+            color: Colors.white,
+            onPressed: () {
+              setState(() {
+                widget.sendFunction(_messageFieldController, null);
+              });
+            },
+          ),
         ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _messageFieldController.dispose();
-    super.dispose();
   }
 }
